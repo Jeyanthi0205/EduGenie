@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>EduGenie - Learning Assistant</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', path='style.css') }}"
+    >
+</head>
+
+<body>
+
+    <div class="container">
+
+        <header class="header">
+            <h1>EduGenie</h1>
+            <p>Google Gemini Powered Learning Assistant</p>
+        </header>
+
+
+        <main class="card">
+
+            <label for="task">
+                Choose a learning task
+            </label>
+
+            <select id="task">
+
+                <option value="qa">
+                    Ask a Question
+                </option>
+
+                <option value="explain">
+                    Explain a Topic
+                </option>
+
+                <option value="quiz">
+                    Generate Quiz
+                </option>
+
+                <option value="summarize">
+                    Summarize Text
+                </option>
+
+                <option value="learning">
+                    Learning Path
+                </option>
+
+            </select>
+
+
+            <label for="inputText">
+                Enter your question or topic
+            </label>
+
+            <textarea
+                id="inputText"
+                rows="8"
+                placeholder="Example: Explain photosynthesis in simple terms."
+            ></textarea>
+
+
+            <button id="submitBtn">
+                Ask EduGenie
+            </button>
+
+
+            <div id="loading" class="loading hidden">
+                EduGenie is thinking...
+            </div>
+
+
+            <section class="result-section">
+
+                <h2>Result</h2>
+
+                <div
+                    id="result"
+                    class="result"
+                >
+                    Your answer will appear here.
+                </div>
+
+            </section>
+
+        </main>
+
+
+        <footer>
+            <p>EduGenie &copy; 2026</p>
+        </footer>
+
+    </div>
+
+
+    <script>
+
+        const task =
+            document.getElementById("task");
+
+        const inputText =
+            document.getElementById("inputText");
+
+        const submitBtn =
+            document.getElementById("submitBtn");
+
+        const result =
+            document.getElementById("result");
+
+        const loading =
+            document.getElementById("loading");
+
+
+        function showResult(text) {
+
+            result.innerHTML = "";
+
+            const content =
+                document.createElement("div");
+
+            content.textContent = text;
+
+            result.appendChild(content);
+        }
+
+
+        function showQuiz(quiz) {
+
+            result.innerHTML = "";
+
+            if (
+                !quiz.questions ||
+                quiz.questions.length === 0
+            ) {
+                showResult(
+                    "No quiz questions were returned."
+                );
+
+                return;
+            }
+
+
+            const title =
+                document.createElement("h3");
+
+            title.textContent =
+                quiz.topic || "Quiz";
+
+            result.appendChild(title);
+
+
+            quiz.questions.forEach(
+                (question, questionIndex) => {
+
+                    const questionBox =
+                        document.createElement("div");
+
+                    questionBox.className =
+                        "quiz-question";
+
+
+                    const questionTitle =
+                        document.createElement("h3");
+
+                    questionTitle.textContent =
+                        `Question ${questionIndex + 1}: ${question.question}`;
+
+                    questionBox.appendChild(
+                        questionTitle
+                    );
+
+
+                    question.options.forEach(
+                        (option, optionIndex) => {
+
+                            const optionElement =
+                                document.createElement("div");
+
+                            optionElement.className =
+                                "quiz-option";
+
+                            optionElement.textContent =
+                                `${String.fromCharCode(65 + optionIndex)}. ${option}`;
+
+                            questionBox.appendChild(
+                                optionElement
+                            );
+
+                        }
+                    );
+
+
+                    const answer =
+                        document.createElement("p");
+
+                    answer.className =
+                        "quiz-answer";
+
+                    answer.textContent =
+                        `Answer: ${question.answer}`;
+
+                    questionBox.appendChild(
+                        answer
+                    );
+
+
+                    const explanation =
+                        document.createElement("p");
+
+                    explanation.className =
+                        "quiz-explanation";
+
+                    explanation.textContent =
+                        `Explanation: ${question.explanation}`;
+
+                    questionBox.appendChild(
+                        explanation
+                    );
+
+
+                    result.appendChild(
+                        questionBox
+                    );
+
+                }
+            );
+
+        }
+
+
+        function getEndpoint(selectedTask) {
+
+            if (selectedTask === "qa") {
+                return "/qa";
+            }
+
+            if (selectedTask === "explain") {
+                return "/explain";
+            }
+
+            if (selectedTask === "quiz") {
+                return "/quiz";
+            }
+
+            if (selectedTask === "summarize") {
+                return "/summarize";
+            }
+
+            if (selectedTask === "learning") {
+                return "/learn/recommendations";
+            }
+
+            return "";
+        }
+
+
+        function getResult(data, selectedTask) {
+
+            if (selectedTask === "qa") {
+                return data.answer;
+            }
+
+            if (selectedTask === "explain") {
+                return data.explanation;
+            }
+
+            if (selectedTask === "summarize") {
+                return data.summary;
+            }
+
+            if (selectedTask === "learning") {
+                return data.learning_path;
+            }
+
+            return "";
+        }
+
+
+        submitBtn.addEventListener(
+            "click",
+            async () => {
+
+                const selectedTask =
+                    task.value;
+
+                const text =
+                    inputText.value.trim();
+
+
+                if (!text) {
+
+                    showResult(
+                        "Please enter a question or topic."
+                    );
+
+                    return;
+                }
+
+
+                const endpoint =
+                    getEndpoint(selectedTask);
+
+
+                if (!endpoint) {
+
+                    showResult(
+                        "Please select a valid learning task."
+                    );
+
+                    return;
+                }
+
+
+                loading.classList.remove(
+                    "hidden"
+                );
+
+                submitBtn.disabled = true;
+
+                result.innerHTML = "";
+
+
+                try {
+
+                    const response =
+                        await fetch(
+                            endpoint,
+                            {
+                                method: "POST",
+
+                                headers: {
+                                    "Content-Type":
+                                        "application/json"
+                                },
+
+                                body: JSON.stringify({
+                                    question: text
+                                })
+                            }
+                        );
+
+
+                    const data =
+                        await response.json();
+
+
+                    if (!response.ok) {
+
+                        throw new Error(
+                            data.detail ||
+                            "Something went wrong."
+                        );
+
+                    }
+
+
+                    if (
+                        selectedTask === "quiz"
+                    ) {
+
+                        showQuiz(data);
+
+                    } else {
+
+                        const answer =
+                            getResult(
+                                data,
+                                selectedTask
+                            );
+
+                        showResult(
+                            answer ||
+                            "No result was returned."
+                        );
+
+                    }
+
+
+                } catch (error) {
+
+                    showResult(
+                        "EduGenie Error:\n\n" +
+                        error.message
+                    );
+
+                } finally {
+
+                    loading.classList.add(
+                        "hidden"
+                    );
+
+                    submitBtn.disabled = false;
+
+                }
+
+            }
+        );
+
+    </script>
+
+</body>
+
+</html>
